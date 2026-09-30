@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout';
 import Alert from '../../components/common/Alert';
-import { getErrorMessage } from '../../utils/dateUtils';
 import izinService from '../../services/izinService';
 
 const JENIS_IZIN = [
@@ -40,7 +39,13 @@ export default function AjukanIzinPage() {
     }
     if (!form.alasan.trim()) errs.alasan = 'Alasan wajib diisi';
     if (form.alasan.trim().length < 10) errs.alasan = 'Alasan minimal 10 karakter';
-    if (!file) errs.bukti = 'Bukti izin wajib diupload';
+    // File tidak wajib di mode demo, tapi kalau ada, validasi formatnya
+    if (file && !['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+      errs.bukti = 'File harus berformat JPG atau PNG';
+    }
+    if (file && file.size > MAX_FILE_SIZE) {
+      errs.bukti = 'Ukuran file maksimal 5 MB';
+    }
     return errs;
   };
 
@@ -85,14 +90,16 @@ export default function AjukanIzinPage() {
       formData.append('tanggalMulai', form.tanggalMulai);
       formData.append('tanggalSelesai', form.tanggalSelesai);
       formData.append('alasan', form.alasan);
-      formData.append('bukti', file);
+      if (file) {
+        formData.append('bukti', file);
+      }
 
       await izinService.ajukanIzin(formData);
 
       setAlert({
         type: 'success',
-        title: 'Pengajuan Berhasil!',
-        message: 'Izin Anda telah berhasil diajukan dan menunggu persetujuan fasilitator.',
+        title: 'Pengajuan Berhasil! 🎉',
+        message: 'Izin Anda telah berhasil diajukan dan sedang menunggu persetujuan fasilitator. Anda akan mendapat notifikasi saat izin diproses.',
       });
 
       // Reset form
@@ -100,9 +107,9 @@ export default function AjukanIzinPage() {
       setFile(null);
       setPreview(null);
 
-      setTimeout(() => navigate('/penghuni/riwayat-izin'), 2000);
+      setTimeout(() => navigate('/penghuni/riwayat-izin'), 2500);
     } catch (err) {
-      setAlert({ type: 'danger', title: 'Pengajuan Gagal', message: getErrorMessage(err) });
+      setAlert({ type: 'danger', title: 'Pengajuan Gagal', message: err.message || 'Terjadi kesalahan. Silakan coba lagi.' });
     } finally {
       setIsLoading(false);
     }
@@ -116,6 +123,8 @@ export default function AjukanIzinPage() {
             <Alert type={alert.type} title={alert.title} message={alert.message} onClose={() => setAlert({ type: '', message: '', title: '' })} />
           </div>
         )}
+
+
 
         <div className="card">
           <div className="card-header">
@@ -159,7 +168,6 @@ export default function AjukanIzinPage() {
                     className={`form-control ${errors.tanggalMulai ? 'error' : ''}`}
                     value={form.tanggalMulai}
                     onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
                   />
                   {errors.tanggalMulai && <div className="form-error">⚠ {errors.tanggalMulai}</div>}
                 </div>
@@ -174,7 +182,7 @@ export default function AjukanIzinPage() {
                     className={`form-control ${errors.tanggalSelesai ? 'error' : ''}`}
                     value={form.tanggalSelesai}
                     onChange={handleChange}
-                    min={form.tanggalMulai || new Date().toISOString().split('T')[0]}
+                    min={form.tanggalMulai || undefined}
                   />
                   {errors.tanggalSelesai && <div className="form-error">⚠ {errors.tanggalSelesai}</div>}
                 </div>
@@ -201,7 +209,7 @@ export default function AjukanIzinPage() {
               {/* File Upload */}
               <div className="form-group">
                 <label className="form-label">
-                  Bukti Izin (JPG/PNG) <span className="required">*</span>
+                  Bukti Izin (JPG/PNG)
                 </label>
                 <div className={`file-upload ${errors.bukti ? 'error' : ''}`} style={{ borderColor: errors.bukti ? 'var(--color-danger)' : undefined }}>
                   <input

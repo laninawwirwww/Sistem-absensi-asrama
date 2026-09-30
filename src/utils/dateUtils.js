@@ -61,11 +61,20 @@ export function getCurrentTimeStr() {
 }
 
 /**
+ * Mode demo/testing: jika true, jendela presensi SELALU terbuka
+ * (untuk keperluan testing tanpa harus menunggu jam tertentu)
+ */
+export const DEMO_MODE = true;
+
+/**
  * Check if current time is within presensi window
  * @param {'SUBUH'|'MALAM'} jenis
  * @returns {boolean}
  */
 export function isPresensiWindowOpen(jenis) {
+  // Dalam mode demo, jendela selalu terbuka
+  if (DEMO_MODE) return true;
+
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();

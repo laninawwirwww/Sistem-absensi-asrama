@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import AppLayout from '../../components/layout/AppLayout';
 import { useAuth } from '../../context/AuthContext';
 import { StatusBadge } from '../../components/common/Badge';
@@ -6,9 +7,18 @@ import { formatDateShort } from '../../utils/dateUtils';
 import presensiService from '../../services/presensiService';
 import izinService from '../../services/izinService';
 
-function StatCard({ icon, label, value, color, bg }) {
+function StatCard({ icon, label, value, color, bg, badge }) {
   return (
-    <div className="stat-card" style={{ '--stat-color': color, '--stat-bg': bg }}>
+    <div className="stat-card" style={{ '--stat-color': color, '--stat-bg': bg, position: 'relative' }}>
+      {badge > 0 && (
+        <div style={{
+          position: 'absolute', top: -8, right: -8,
+          background: '#DC2626', color: 'white',
+          borderRadius: '999px', padding: '2px 8px',
+          fontSize: 11, fontWeight: 800, zIndex: 1,
+          animation: 'pulse 2s infinite',
+        }}>{badge}</div>
+      )}
       <div className="stat-icon">{icon}</div>
       <div className="stat-info">
         <div className="stat-value">{value}</div>
@@ -74,11 +84,43 @@ export default function FasilDashboard() {
         </p>
       </div>
 
+      {/* Notif Banner jika ada izin menunggu */}
+      {!isLoading && stats.izinMenunggu > 0 && (
+        <Link to="/fasil/pengajuan-izin" style={{ textDecoration: 'none' }}>
+          <div style={{
+            background: 'linear-gradient(90deg, #D97706, #F59E0B)',
+            borderRadius: 'var(--radius-xl)',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            color: 'white',
+            cursor: 'pointer',
+            transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+          >
+            <span style={{ fontSize: 22 }}>⏳</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 'var(--text-sm)' }}>
+                {stats.izinMenunggu} Pengajuan Izin Menunggu Persetujuan
+              </div>
+              <div style={{ fontSize: 'var(--text-xs)', opacity: 0.9 }}>
+                Klik untuk review dan setujui / tolak pengajuan izin penghuni
+              </div>
+            </div>
+            <span style={{ fontSize: 20 }}>→</span>
+          </div>
+        </Link>
+      )}
+
       {/* Stats */}
       <div className="stats-grid">
-        <StatCard icon="✅" label="Hadir (Hari Ini)" value={isLoading ? '...' : stats.totalHadir} color="#059669" bg="#ECFDF5" />
-        <StatCard icon="❌" label="Alpha (Hari Ini)" value={isLoading ? '...' : stats.totalAlpha} color="#DC2626" bg="#FEF2F2" />
-        <StatCard icon="⏳" label="Izin Menunggu" value={isLoading ? '...' : stats.izinMenunggu} color="#D97706" bg="#FFFBEB" />
+        <StatCard icon="✅" label="Hadir (Terbaru)" value={isLoading ? '...' : stats.totalHadir} color="#059669" bg="#ECFDF5" />
+        <StatCard icon="❌" label="Alpha (Terbaru)" value={isLoading ? '...' : stats.totalAlpha} color="#DC2626" bg="#FEF2F2" />
+        <StatCard icon="⏳" label="Izin Menunggu" value={isLoading ? '...' : stats.izinMenunggu} color="#D97706" bg="#FFFBEB" badge={stats.izinMenunggu} />
         <StatCard icon="📋" label="Total Presensi" value={isLoading ? '...' : stats.totalPresensi} color="#2563EB" bg="#EFF6FF" />
       </div>
 
@@ -86,6 +128,7 @@ export default function FasilDashboard() {
       <div className="card mb-6">
         <div className="card-header">
           <div className="card-title">Presensi Terbaru</div>
+          <Link to="/fasil/riwayat-presensi" className="btn btn-outline btn-sm">Lihat Semua →</Link>
         </div>
         <div className="table-container">
           <table className="table">
@@ -116,6 +159,7 @@ export default function FasilDashboard() {
       <div className="card">
         <div className="card-header">
           <div className="card-title">Izin Menunggu Approval</div>
+          <Link to="/fasil/pengajuan-izin" className="btn btn-primary btn-sm">Review Izin →</Link>
         </div>
         <div className="table-container">
           <table className="table">

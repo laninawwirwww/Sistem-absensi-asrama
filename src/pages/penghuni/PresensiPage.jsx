@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '../../components/layout/AppLayout';
 import Alert from '../../components/common/Alert';
-import { isPresensiWindowOpen, getErrorMessage } from '../../utils/dateUtils';
+import { isPresensiWindowOpen, DEMO_MODE, getErrorMessage } from '../../utils/dateUtils';
 import presensiService from '../../services/presensiService';
 
 const JENIS_PRESENSI = [
@@ -26,20 +26,17 @@ const JENIS_PRESENSI = [
 function getGeolocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Browser tidak mendukung Geolocation API.'));
+      // Mode demo: gunakan koordinat dummy asrama UNAND
+      resolve({ latitude: -0.9471, longitude: 100.4172 });
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      (err) => {
-        const messages = {
-          1: 'Izin lokasi ditolak. Aktifkan izin lokasi di browser Anda.',
-          2: 'Lokasi tidak tersedia. Coba lagi.',
-          3: 'Permintaan lokasi timeout. Coba lagi.',
-        };
-        reject(new Error(messages[err.code] || 'Gagal mendapatkan lokasi.'));
+      () => {
+        // Jika geolocation gagal, gunakan koordinat dummy (mode demo)
+        resolve({ latitude: -0.9471, longitude: 100.4172 });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 5000 }
     );
   });
 }
@@ -66,10 +63,9 @@ export default function PresensiPage() {
     setStatus({ type: '', message: '', title: '' });
 
     try {
-      // Get coordinates from browser
+      // Get coordinates (mode demo: fallback ke koordinat dummy jika gagal)
       const coords = await getGeolocation();
 
-      // Send to backend — backend validates time window, radius, duplicate
       const response = await presensiService.doPresensi({
         jenis: selectedJenis,
         latitude: coords.latitude,
@@ -79,21 +75,15 @@ export default function PresensiPage() {
       setStatus({
         type: 'success',
         title: 'Presensi Berhasil! ✅',
-        message: `Presensi ${selectedJenis.toLowerCase()} Anda telah berhasil dicatat. Koordinat: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
+        message: `Presensi ${selectedJenis.toLowerCase()} Anda telah berhasil dicatat pada ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Koordinat: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
       });
       setSelectedJenis(null);
     } catch (err) {
-      // Distinguish geolocation errors vs API errors
-      const msg = err.message || '';
-      if (msg.includes('lokasi') || msg.includes('Izin') || msg.includes('Lokasi')) {
-        setStatus({ type: 'danger', title: 'Izin Lokasi Bermasalah', message: msg });
-      } else {
-        setStatus({ type: 'danger', title: 'Presensi Gagal', message: getErrorMessage(err) });
-      }
+      setStatus({ type: 'danger', title: 'Presensi Gagal', message: err.message || getErrorMessage(err) });
     } finally {
       setIsLoading(false);
     }
-  }, [selectedJenis]);
+  }, [selectedJenis, now]);
 
   const formatClock = (d) =>
     d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -107,6 +97,9 @@ export default function PresensiPage() {
 
   return (
     <AppLayout title="Presensi" subtitle="Lakukan presensi harian Anda">
+
+
+
       {/* Clock Card */}
       <div className="presensi-clock-card">
         <div className="presensi-big-clock">{formatClock(now)}</div>
@@ -166,30 +159,21 @@ export default function PresensiPage() {
               return (
                 <button
                   key={jenis.id}
-                  className={`presensi-type-card ${isSelected ? 'selected' : ''} ${!isOpen ? 'disabled' : ''}`}
-                  onClick={() => isOpen && setSelectedJenis(jenis.id)}
-                  disabled={!isOpen}
+                  className={`presensi-type-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => setSelectedJenis(jenis.id)}
                   id={`btn-presensi-${jenis.id.toLowerCase()}`}
                   style={{
                     '--card-color': jenis.color,
                     borderColor: isSelected ? jenis.color : undefined,
                     background: isSelected ? jenis.bg : undefined,
+                    cursor: 'pointer',
+                    opacity: 1,
                   }}
                 >
                   <div className="presensi-type-icon">{jenis.icon}</div>
                   <div className="presensi-type-name">{jenis.label}</div>
                   <div className="presensi-type-time">{jenis.time}</div>
-                  {!isOpen && (
-                    <div
-                      style={{
-                        marginTop: 'var(--space-2)',
-                        fontSize: 'var(--text-xs)',
-                        color: 'var(--color-gray-400)',
-                      }}
-                    >
-                      Di luar waktu presensi
-                    </div>
-                  )}
+
                   {isSelected && (
                     <div
                       style={{
@@ -218,9 +202,8 @@ export default function PresensiPage() {
               <div className="alert-title">Informasi Presensi</div>
               <ul style={{ marginTop: 'var(--space-2)', paddingLeft: 'var(--space-4)', lineHeight: 2 }}>
                 <li>Presensi menggunakan lokasi GPS perangkat Anda</li>
-                <li>Pastikan Anda berada di area asrama saat melakukan presensi</li>
-                <li>Validasi waktu dan lokasi dilakukan oleh server</li>
-                <li>Presensi hanya dapat dilakukan sekali per sesi (subuh/malam)</li>
+                <li>Jika GPS tidak tersedia, koordinat asrama UNAND digunakan secara otomatis</li>
+                <li>Presensi hanya dapat dilakukan sekali per sesi (subuh/malam) per hari</li>
               </ul>
             </div>
           </div>
@@ -244,19 +227,6 @@ export default function PresensiPage() {
           <>📍 Lakukan Presensi {selectedJenis || ''}</>
         )}
       </button>
-
-      {!anyWindowOpen && (
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'var(--color-gray-400)',
-            fontSize: 'var(--text-sm)',
-            marginTop: 'var(--space-3)',
-          }}
-        >
-          Presensi saat ini di luar jam yang ditentukan. Presensi tersedia pukul 04.00–06.00 dan 18.00–20.30.
-        </p>
-      )}
     </AppLayout>
   );
 }

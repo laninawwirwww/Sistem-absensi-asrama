@@ -3,9 +3,8 @@ import AppLayout from '../../components/layout/AppLayout';
 import DataTable from '../../components/common/DataTable';
 import Pagination from '../../components/common/Pagination';
 import Modal from '../../components/common/Modal';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
-import Alert from '../../components/common/Alert';
 import { StatusBadge } from '../../components/common/Badge';
+import { Toast, confirmAction } from '../../utils/sweetalert';
 import { getInitials, getErrorMessage } from '../../utils/dateUtils';
 import userService from '../../services/userService';
 
@@ -28,10 +27,7 @@ export default function AdminFasilPage() {
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  const [deactivateTarget, setDeactivateTarget] = useState(null);
-  const [isDeactivating, setIsDeactivating] = useState(false);
 
-  const [alert, setAlert] = useState({ type: '', message: '', title: '' });
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -86,31 +82,51 @@ export default function AdminFasilPage() {
       if (!payload.password) delete payload.password;
       if (editTarget) {
         await userService.updateFasil(editTarget.id, payload);
-        setAlert({ type: 'success', title: 'Berhasil!', message: 'Data fasil berhasil diperbarui.' });
+        Toast.fire({ icon: 'success', title: 'Data fasil diperbarui.' });
       } else {
         await userService.createFasil(payload);
-        setAlert({ type: 'success', title: 'Berhasil!', message: 'Fasil baru berhasil ditambahkan.' });
+        Toast.fire({ icon: 'success', title: 'Fasil ditambahkan.' });
       }
       setShowForm(false);
       fetchData();
     } catch (err) {
-      setAlert({ type: 'danger', title: 'Gagal', message: getErrorMessage(err) });
+      Toast.fire({ icon: 'error', title: getErrorMessage(err) });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeactivate = async () => {
-    setIsDeactivating(true);
+  const handleDemote = async (row) => {
+    const confirmed = await confirmAction(
+      'Berhentikan Fasil?',
+      `Apakah Anda yakin ingin memberhentikan fasil ${row.name} dan mengembalikannya menjadi Penghuni?`,
+      'Ya, Berhentikan',
+      'warning'
+    );
+    if (!confirmed) return;
     try {
-      await userService.deactivateFasil(deactivateTarget.id);
-      setAlert({ type: 'info', title: 'Dinonaktifkan', message: `Fasil ${deactivateTarget.name} telah dinonaktifkan.` });
-      setDeactivateTarget(null);
+      await userService.demoteFasil(row.id);
+      Toast.fire({ icon: 'success', title: `Fasil ${row.name} diberhentikan.` });
       fetchData();
     } catch (err) {
-      setAlert({ type: 'danger', title: 'Gagal', message: getErrorMessage(err) });
-    } finally {
-      setIsDeactivating(false);
+      Toast.fire({ icon: 'error', title: getErrorMessage(err) });
+    }
+  };
+
+  const handleDelete = async (row) => {
+    const confirmed = await confirmAction(
+      'Hapus Permanen?',
+      `Apakah Anda yakin ingin menghapus fasil ${row.name} secara permanen dari sistem?`,
+      'Ya, Hapus',
+      'danger'
+    );
+    if (!confirmed) return;
+    try {
+      await userService.deleteFasil(row.id);
+      Toast.fire({ icon: 'success', title: `Fasil ${row.name} dihapus.` });
+      fetchData();
+    } catch (err) {
+      Toast.fire({ icon: 'error', title: getErrorMessage(err) });
     }
   };
 
@@ -139,10 +155,9 @@ export default function AdminFasilPage() {
       key: 'id',
       render: (_, row) => (
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <button className="btn btn-outline btn-sm" onClick={() => openEdit(row)} id={`btn-edit-fasil-${row.id}`}>✏️</button>
-          {row.status !== 'NONAKTIF' && (
-            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeactivateTarget(row)} id={`btn-deaktif-fasil-${row.id}`}>🚫</button>
-          )}
+          <button className="btn btn-outline btn-sm" onClick={() => openEdit(row)} title="Edit">✏️</button>
+          <button className="btn btn-outline btn-sm" style={{ color: '#D97706', borderColor: '#D97706' }} onClick={() => handleDemote(row)} title="Berhentikan (Kembali ke Penghuni)">⬇️</button>
+          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(row)} title="Hapus Permanen">🗑️</button>
         </div>
       ),
     },
@@ -150,11 +165,7 @@ export default function AdminFasilPage() {
 
   return (
     <AppLayout title="Data Fasil" subtitle="Manajemen data fasilitator asrama">
-      {alert.type && (
-        <div style={{ marginBottom: 'var(--space-5)' }}>
-          <Alert type={alert.type} title={alert.title} message={alert.message} onClose={() => setAlert({ type: '', message: '', title: '' })} />
-        </div>
-      )}
+
 
       <div className="card">
         <div className="card-header">
@@ -246,17 +257,7 @@ export default function AdminFasilPage() {
         </div>
       </Modal>
 
-      {/* Deactivate Confirm */}
-      <ConfirmDialog
-        isOpen={!!deactivateTarget}
-        onClose={() => setDeactivateTarget(null)}
-        onConfirm={handleDeactivate}
-        title="Nonaktifkan Fasil"
-        message={`Apakah Anda yakin ingin menonaktifkan fasil ${deactivateTarget?.name}? Fasil tidak dapat login setelah dinonaktifkan.`}
-        confirmLabel="🚫 Ya, Nonaktifkan"
-        type="danger"
-        isLoading={isDeactivating}
-      />
+
     </AppLayout>
   );
 }

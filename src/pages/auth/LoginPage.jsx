@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../utils/dateUtils';
 import Alert from '../../components/common/Alert';
@@ -13,6 +13,7 @@ const roleRedirect = {
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [form, setForm] = useState({ username: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -76,6 +77,12 @@ export default function LoginPage() {
         {apiError && (
           <div style={{ marginBottom: 'var(--space-5)' }}>
             <Alert type="danger" message={apiError} onClose={() => setApiError('')} />
+          </div>
+        )}
+
+        {location.state?.message && !apiError && (
+          <div style={{ marginBottom: 'var(--space-5)' }}>
+            <Alert type="success" title="Sukses" message={location.state.message} />
           </div>
         )}
 
@@ -168,7 +175,21 @@ export default function LoginPage() {
 
         <p
           style={{
-            marginTop: 'var(--space-6)',
+            marginTop: 'var(--space-5)',
+            textAlign: 'center',
+            fontSize: 'var(--text-sm)',
+            color: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          Belum punya akun?{' '}
+          <Link to="/register" style={{ color: 'white', fontWeight: 'bold' }}>
+            Daftar di sini
+          </Link>
+        </p>
+
+        <p
+          style={{
+            marginTop: 'var(--space-4)',
             textAlign: 'center',
             fontSize: 'var(--text-xs)',
             color: 'rgba(255,255,255,0.35)',

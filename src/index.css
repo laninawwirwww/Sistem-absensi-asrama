@@ -378,7 +378,12 @@ ul, ol {
 
 .topbar-left {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+}
+
+.menu-toggle {
+  display: none;
+  font-size: 24px;
 }
 
 .topbar-title {
@@ -1548,6 +1553,10 @@ select.form-control {
 
   .sidebar.open {
     transform: translateX(0);
+  }
+
+  .menu-toggle {
+    display: inline-flex;
   }
 
   .page-content {

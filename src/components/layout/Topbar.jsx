@@ -14,7 +14,7 @@ function formatDate(date) {
   return `${DAYS[date.getDay()]}, ${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-export default function Topbar({ title, subtitle }) {
+export default function Topbar({ title, subtitle, onMenuClick }) {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -25,8 +25,17 @@ export default function Topbar({ title, subtitle }) {
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <h1 className="topbar-title">{title}</h1>
-        {subtitle && <span className="topbar-subtitle">{subtitle}</span>}
+        <button 
+          className="menu-toggle btn btn-ghost btn-icon" 
+          onClick={onMenuClick}
+          style={{ marginRight: 'var(--space-3)', padding: 0 }}
+        >
+          ☰
+        </button>
+        <div>
+          <h1 className="topbar-title">{title}</h1>
+          {subtitle && <span className="topbar-subtitle">{subtitle}</span>}
+        </div>
       </div>
       <div className="topbar-right">
         <div className="topbar-time">
