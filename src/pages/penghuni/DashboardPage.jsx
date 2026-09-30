@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '../../components/layout/AppLayout';
 import { useAuth } from '../../context/AuthContext';
+import { useDummyData } from '../../context/DummyDataContext';
 import { StatusBadge } from '../../components/common/Badge';
 import { formatDateShort, formatDateTime } from '../../utils/dateUtils';
 import presensiService from '../../services/presensiService';
@@ -18,8 +19,105 @@ function StatCard({ icon, label, value, color, bg }) {
   );
 }
 
+function NotificationPanel({ penghuniId, getNotif, markRead, markAllRead }) {
+  const notifs = getNotif(penghuniId);
+  const unread = notifs.filter((n) => !n.read).length;
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (notifs.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 'var(--space-5)' }}>
+      <div className="card" style={{
+        border: unread > 0 ? '2px solid #7C3AED' : '1px solid var(--color-gray-200)',
+        transition: 'border-color 0.3s',
+      }}>
+        <div
+          className="card-header"
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (!isOpen && unread > 0) markAllRead(penghuniId);
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <div className="card-title">
+              🔔 Notifikasi
+            </div>
+            {unread > 0 && (
+              <span style={{
+                background: '#7C3AED',
+                color: 'white',
+                borderRadius: '999px',
+                padding: '2px 10px',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 700,
+                animation: 'pulse 2s infinite',
+              }}>
+                {unread} baru
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: 'var(--text-lg)', color: 'var(--color-gray-400)', userSelect: 'none' }}>
+            {isOpen ? '▲' : '▼'}
+          </span>
+        </div>
+
+        {isOpen && (
+          <div style={{ borderTop: '1px solid var(--color-gray-100)' }}>
+            {notifs.map((n) => (
+              <div
+                key={n.id}
+                style={{
+                  padding: 'var(--space-4)',
+                  borderBottom: '1px solid var(--color-gray-100)',
+                  background: n.read ? 'transparent' : 'rgba(124, 58, 237, 0.04)',
+                  display: 'flex',
+                  gap: 'var(--space-3)',
+                  cursor: 'pointer',
+                }}
+                onClick={() => markRead(n.id)}
+              >
+                <span style={{ fontSize: 22, flexShrink: 0 }}>
+                  {n.type === 'IZIN_DISETUJUI' ? '✅' : '❌'}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontWeight: n.read ? 500 : 700,
+                    fontSize: 'var(--text-sm)',
+                    color: n.type === 'IZIN_DISETUJUI' ? '#059669' : '#DC2626',
+                    marginBottom: 2,
+                  }}>
+                    {n.title}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-600)', lineHeight: 1.5 }}>
+                    {n.message}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-gray-400)', marginTop: 4 }}>
+                    {formatDateTime(n.createdAt)}
+                  </div>
+                </div>
+                {!n.read && (
+                  <div style={{
+                    width: 8, height: 8,
+                    borderRadius: '50%',
+                    background: '#7C3AED',
+                    flexShrink: 0,
+                    marginTop: 4,
+                  }} />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function PenghuniDashboard() {
   const { user } = useAuth();
+  const { getNotifikasi, markNotifRead, markAllNotifRead } = useDummyData();
   const [stats, setStats] = useState({ hadir: 0, alpha: 0, izin: 0, sakit: 0 });
   const [recentPresensi, setRecentPresensi] = useState([]);
   const [recentIzin, setRecentIzin] = useState([]);
@@ -107,9 +205,19 @@ export default function PenghuniDashboard() {
         </p>
       </div>
 
+      {/* Notifikasi Panel */}
+      {user && (
+        <NotificationPanel
+          penghuniId={user.id}
+          getNotif={getNotifikasi}
+          markRead={markNotifRead}
+          markAllRead={markAllNotifRead}
+        />
+      )}
+
       {/* Stats */}
       <div className="stats-grid">
-        <StatCard icon="✅" label="Hadir Bulan Ini" value={isLoading ? '...' : stats.hadir} color="#059669" bg="#ECFDF5" />
+        <StatCard icon="✅" label="Hadir (5 Terakhir)" value={isLoading ? '...' : stats.hadir} color="#059669" bg="#ECFDF5" />
         <StatCard icon="❌" label="Alpha" value={isLoading ? '...' : stats.alpha} color="#DC2626" bg="#FEF2F2" />
         <StatCard icon="📋" label="Izin" value={isLoading ? '...' : stats.izin} color="#D97706" bg="#FFFBEB" />
         <StatCard icon="🏥" label="Sakit" value={isLoading ? '...' : stats.sakit} color="#0284C7" bg="#F0F9FF" />

@@ -31,6 +31,9 @@ export default function AdminPenghuniPage() {
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
+  const [promoteTarget, setPromoteTarget] = useState(null);
+  const [isPromoting, setIsPromoting] = useState(false);
+
   const [alert, setAlert] = useState({ type: '', message: '', title: '' });
 
   const fetchData = async () => {
@@ -116,6 +119,20 @@ export default function AdminPenghuniPage() {
     }
   };
 
+  const handlePromote = async () => {
+    setIsPromoting(true);
+    try {
+      await userService.promoteToFasil(promoteTarget.id);
+      setAlert({ type: 'success', title: 'Berhasil', message: `Penghuni ${promoteTarget.name} telah dipromosikan menjadi Fasil.` });
+      setPromoteTarget(null);
+      fetchData();
+    } catch (err) {
+      setAlert({ type: 'danger', title: 'Gagal', message: getErrorMessage(err) });
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
   const columns = [
     {
       header: 'Penghuni',
@@ -140,6 +157,9 @@ export default function AdminPenghuniPage() {
       render: (_, row) => (
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <button className="btn btn-outline btn-sm" onClick={() => openEdit(row)} id={`btn-edit-penghuni-${row.id}`}>✏️</button>
+          {row.status === 'AKTIF' && (
+            <button className="btn btn-outline btn-sm" style={{ color: 'var(--color-primary)' }} onClick={() => setPromoteTarget(row)} title="Jadikan Fasil" id={`btn-promote-penghuni-${row.id}`}>🎓</button>
+          )}
           {row.status !== 'NONAKTIF' && (
             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeactivateTarget(row)} id={`btn-deaktif-penghuni-${row.id}`}>🚫</button>
           )}
@@ -258,6 +278,18 @@ export default function AdminPenghuniPage() {
         confirmLabel="🚫 Ya, Nonaktifkan"
         type="danger"
         isLoading={isDeactivating}
+      />
+
+      {/* Promote Confirm */}
+      <ConfirmDialog
+        isOpen={!!promoteTarget}
+        onClose={() => setPromoteTarget(null)}
+        onConfirm={handlePromote}
+        title="Jadikan Fasil"
+        message={`Apakah Anda yakin ingin mempromosikan penghuni ${promoteTarget?.name} menjadi Fasilitator?`}
+        confirmLabel="🎓 Ya, Promosikan"
+        type="primary"
+        isLoading={isPromoting}
       />
     </AppLayout>
   );

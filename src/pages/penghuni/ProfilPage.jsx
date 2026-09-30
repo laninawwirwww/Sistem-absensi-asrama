@@ -23,9 +23,13 @@ export default function ProfilPage() {
         setProfile(res.data);
         setForm(res.data);
       })
-      .catch(console.error)
+      .catch((err) => {
+        // Fallback ke user dari context
+        setProfile(user);
+        setForm(user || {});
+      })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [user]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -33,7 +37,7 @@ export default function ProfilPage() {
       const res = await userService.updateProfile(form);
       setProfile(res.data);
       setIsEditing(false);
-      setAlert({ type: 'success', title: 'Profil Disimpan', message: 'Data profil berhasil diperbarui.' });
+      setAlert({ type: 'success', title: 'Profil Disimpan ✅', message: 'Data profil berhasil diperbarui.' });
     } catch (err) {
       setAlert({ type: 'danger', title: 'Gagal', message: getErrorMessage(err) });
     } finally {
@@ -55,17 +59,31 @@ export default function ProfilPage() {
     setIsSaving(true);
     try {
       await userService.changePassword({ oldPassword: pwForm.oldPassword, newPassword: pwForm.newPassword });
-      setAlert({ type: 'success', title: 'Password Diubah', message: 'Password berhasil diperbarui.' });
+      setAlert({ type: 'success', title: 'Password Diubah ✅', message: 'Password berhasil diperbarui. Hint: password dummy adalah 123456' });
       setPwForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
       setPwErrors({});
     } catch (err) {
-      setAlert({ type: 'danger', title: 'Gagal', message: getErrorMessage(err) });
+      setAlert({ type: 'danger', title: 'Gagal', message: err.message || getErrorMessage(err) });
     } finally {
       setIsSaving(false);
     }
   };
 
   const displayData = profile || user;
+
+  // Tentukan fields berdasarkan role
+  const profileFields = [
+    { key: 'name', label: 'Nama Lengkap', type: 'text' },
+    { key: 'username', label: 'Username', type: 'text' },
+    { key: 'email', label: 'Email', type: 'email' },
+    { key: 'noTelp', label: 'No. Telepon', type: 'tel' },
+    ...(displayData?.role === 'PENGHUNI' ? [
+      { key: 'noKamar', label: 'No. Kamar', type: 'text' },
+      { key: 'blok', label: 'Blok', type: 'text' },
+      { key: 'nim', label: 'NIM', type: 'text' },
+      { key: 'fakultas', label: 'Fakultas', type: 'text' },
+    ] : []),
+  ];
 
   return (
     <AppLayout title="Profil" subtitle="Informasi akun dan data diri Anda">
@@ -128,16 +146,7 @@ export default function ProfilPage() {
               <div className="loading-container"><div className="spinner" /></div>
             ) : (
               <div className="profile-info-grid">
-                {[
-                  { key: 'name', label: 'Nama Lengkap', type: 'text' },
-                  { key: 'username', label: 'Username', type: 'text' },
-                  { key: 'email', label: 'Email', type: 'email' },
-                  { key: 'noTelp', label: 'No. Telepon', type: 'tel' },
-                  { key: 'noKamar', label: 'No. Kamar', type: 'text' },
-                  { key: 'blok', label: 'Blok', type: 'text' },
-                  { key: 'nim', label: 'NIM', type: 'text' },
-                  { key: 'fakultas', label: 'Fakultas', type: 'text' },
-                ].map(({ key, label, type }) => (
+                {profileFields.map(({ key, label, type }) => (
                   <div key={key} className="profile-info-item">
                     <div className="profile-info-label">{label}</div>
                     {isEditing ? (
@@ -166,8 +175,14 @@ export default function ProfilPage() {
             <div className="card-title">Ubah Password</div>
           </div>
           <div className="card-body" style={{ maxWidth: 420 }}>
+            <div className="alert alert-info" style={{ marginBottom: 'var(--space-4)' }}>
+              <span className="alert-icon">💡</span>
+              <div className="alert-content">
+                <div>Password dummy untuk testing adalah <strong>123456</strong></div>
+              </div>
+            </div>
             {[
-              { key: 'oldPassword', label: 'Password Lama', placeholder: 'Masukkan password lama' },
+              { key: 'oldPassword', label: 'Password Lama', placeholder: 'Masukkan password lama (123456)' },
               { key: 'newPassword', label: 'Password Baru', placeholder: 'Minimal 6 karakter' },
               { key: 'confirmPassword', label: 'Konfirmasi Password Baru', placeholder: 'Ulangi password baru' },
             ].map(({ key, label, placeholder }) => (
